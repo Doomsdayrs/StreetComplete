@@ -11,14 +11,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.plus
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import java.util.concurrent.CopyOnWriteArrayList
 
 class LogsViewModelImpl(
     private val logsController: LogsController,
@@ -55,21 +56,21 @@ class LogsViewModelImpl(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val logs: StateFlow<List<LogMessage>> =
+    override val logs: SharedFlow<List<LogMessage>> =
         filters.transformLatest { filters ->
             // get prior logs into a backing state
             // There will be duplication regardless.
-            var logs: List<LogMessage> = logsController.getLogs(filters)
+            val logs = CopyOnWriteArrayList(logsController.getLogs(filters))
 
             // emit the logs for the first view
             emit(logs)
 
             // start listening to new logs
             getIncomingLogs(filters).collect {
-                logs = logs + it
+                logs.add(it)
                 emit(logs)
             }
-        }.stateIn(viewModelScope + Dispatchers.IO, SharingStarted.Eagerly, emptyList())
+        }.shareIn(viewModelScope + Dispatchers.IO, SharingStarted.Eagerly, 1)
 }
 
 private fun LogsController.getLogs(filters: LogsFilters) =

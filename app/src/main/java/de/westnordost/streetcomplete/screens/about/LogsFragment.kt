@@ -62,7 +62,7 @@ class LogsFragment : TwoPaneDetailFragment(R.layout.fragment_logs) {
     }
 
     private fun onClickShare() = viewLifecycleScope.launch {
-        val logText = viewModel.logs.value.format()
+        val logText = viewModel.logs.replayCache[0].format()
         val logTimestamp = LocalDateTime.now().toString()
         val logTitle = "${BuildConfig.APPLICATION_ID}_${BuildConfig.VERSION_NAME}_$logTimestamp.log"
 
